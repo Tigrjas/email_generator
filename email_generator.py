@@ -61,10 +61,39 @@ def print_emails(emails: list, email: str) -> None:
         print(f"\nDate: {content['date']}\nFrom: {content['from']}\n\tSubject: {
               content['subject']}\n\tBody: {content['textBody']}")
 
-def open_1secmail(email:str) -> None:
+
+def print_email(email: str, email_list: list, index: int) -> None:
+    """Take a list of emails and print to the screen argument index"""
+    user, domain = parse_email(email)
+    email_to_print = email_list[index]
+    id = email_to_print['id']
+
+    r = requests.get(
+        f'https://www.1secmail.com/api/v1/?action=readMessage&login={user}&domain={domain}&id={id}')
+    content = r.json()
+    print(f"\nDate: {content['date']}\nFrom: {content['from']}\n\tSubject: {
+        content['subject']}\n\tBody: {content['textBody']}")
+
+
+def open_1secmail(email: str) -> None:
     user, domain = parse_email(email)
     url = f"https://www.1secmail.com/?login={user}&domain={domain}"
     webbrowser.open_new(url)
+
+
+def monitor_email(email: str) -> None:
+    """This keeps the terminal open and monitors if there are emails coming in"""
+    print("\n*** Starting to monitor for emails... ***\n")
+
+    count = 0
+    try:
+        while True:
+            if len(list_of_emails(email)) > count:
+                count += 1
+                print_email(email, list_of_emails(email), count - 1)
+    except KeyboardInterrupt:
+        print(f"Program terminated")
+
 
 def main():
     count = 0
@@ -75,25 +104,8 @@ def main():
     # Copy the email to clipboard
     pyperclip.copy(email)
     print(f"Your email has been copied to clipboard - {email}\n")
-    open_1secmail(email)
 
-    while True:
-        if len(list_of_emails(email)) > count:
-            count += 1
-            clear_screen()
-            # This contains an email
-            print_emails(list_of_emails(email), email)
-            command = input("Read more emails: (y/n): ")
-            match command:
-                case 'y':
-                    continue
-                case 'n':
-                    break
-        else:
-            # This does not contain email
-            print("Checking for email")
-            time.sleep(5)
-            continue
+    monitor_email(email)
 
 
 if __name__ == "__main__":

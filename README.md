@@ -6,4 +6,4 @@ You can run the script from the command line using:
 ```python
 python email_generator.py
 ```
-While the script is running there will be a terminal window open monitoring for new emails coming in. The generated email should be attached to the clipboard ready to paste.
+While the script is running there will be a terminal window open monitoring for new emails coming in. The generated email should be attached to the clipboard ready to paste. Note that to end the script you have to hit ctrl + c
