@@ -3,6 +3,7 @@ import random
 import pyperclip
 import time
 import os
+import webbrowser
 from pprint import pprint
 from typing import Set
 
@@ -60,6 +61,10 @@ def print_emails(emails: list, email: str) -> None:
         print(f"\nDate: {content['date']}\nFrom: {content['from']}\n\tSubject: {
               content['subject']}\n\tBody: {content['textBody']}")
 
+def open_1secmail(email:str) -> None:
+    user, domain = parse_email(email)
+    url = f"https://www.1secmail.com/?login={user}&domain={domain}"
+    webbrowser.open_new(url)
 
 def main():
     count = 0
@@ -70,6 +75,7 @@ def main():
     # Copy the email to clipboard
     pyperclip.copy(email)
     print(f"Your email has been copied to clipboard - {email}\n")
+    open_1secmail(email)
 
     while True:
         if len(list_of_emails(email)) > count:
