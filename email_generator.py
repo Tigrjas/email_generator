@@ -3,6 +3,7 @@ import random
 import pyperclip
 import time
 import os
+import sys
 import webbrowser
 from pprint import pprint
 from typing import Set
@@ -83,27 +84,48 @@ def open_1secmail(email: str) -> None:
 
 def monitor_email(email: str) -> None:
     """This keeps the terminal open and monitors if there are emails coming in"""
-    print("\n*** Starting to monitor for emails... ***\n")
+    print("""
+___________________________________
+
+       Monitoring for Emails
+___________________________________
+    """)
 
     count = 0
+    start_time = time.time()
+
     try:
-        while True:
+        while time.time() - start_time < 30:
             if len(list_of_emails(email)) > count:
                 count += 1
                 print_email(email, list_of_emails(email), count - 1)
+            time.sleep(5)  # Sleep to prevent accessive API calls
     except KeyboardInterrupt:
         print(f"Program terminated")
 
 
+def print_title() -> None:
+    """A title before the program runs. Just for fun"""
+    print("""
+╔══════════════════════════════════╗
+║ A _ A                            ║
+║(='o'=)     Email Generator       ║
+║(;;)(;;)                          ║
+╚══════════════════════════════════╝
+""")
+
+
 def main():
-    count = 0
+    print_title()
+
+    # count = 0
 
     # Generate the email
     email = generate_email()
 
     # Copy the email to clipboard
     pyperclip.copy(email)
-    print(f"Your email has been copied to clipboard - {email}\n")
+    print(f"{email} - copied to clipboard\n")
 
     monitor_email(email)
 
