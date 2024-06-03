@@ -5,8 +5,10 @@ import time
 import os
 import sys
 import webbrowser
+import re
 from pprint import pprint
 from typing import Set
+import logging
 
 # Useful information
 # https://www.1secmail.com/api/#
@@ -15,15 +17,21 @@ from typing import Set
 # ACTIVE_DOMAIN_LIST_ENDPOINT = "https://www.1secmail.com/api/v1/?action=getDomainList"
 GENERATE_RANDOM_EMAIL_ENDPOINT = "https://www.1secmail.com/api/v1/?action=genRandomMailbox"
 
+logging.basicConfig(level=logging.INFO)
+
 
 def generate_email() -> str:
     """Return a randomly generated email from the 1secmail endpoint"""
-    r = requests.get(GENERATE_RANDOM_EMAIL_ENDPOINT)
-    email = r.json()[0]
-    return email
+    try:
+        r = requests.get(GENERATE_RANDOM_EMAIL_ENDPOINT)
+        email = r.json()[0]
+        return email
+    except Exception as e:
+        logging.error("Failed to generate email: %s", e)
+        return ""
 
 
-def parse_email(email: str) -> Set[str]:
+def split_email(email: str) -> Set[str]:
     """Splits the email into two parts: the username and the mail server/domain and returns as a set"""
     user = email.split('@')[0]
     domain = email.split('@')[1]
@@ -32,14 +40,16 @@ def parse_email(email: str) -> Set[str]:
 
 def list_of_emails(email) -> list:
     """Returns a list of the emails in the mailbox on 1secmail given an email"""
-    user, domain = parse_email(email)
+    try:
+        user, domain = split_email(email)
+        list_of_emails_endpoint = f"https://www.1secmail.com/api/v1/?action=getMessages&login={
+            user}&domain={domain}"
+        r = requests.get(list_of_emails_endpoint)
+        return r.json()
 
-    list_of_emails_endpoint = f"https://www.1secmail.com/api/v1/?action=getMessages&login={
-        user}&domain={domain}"
-
-    r = requests.get(list_of_emails_endpoint)
-
-    return r.json()
+    except Exception as e:
+        logging.error("Failed to retrieve list of emails: %s", e)
+        return []
 
 
 def clear_screen() -> None:
@@ -50,34 +60,42 @@ def clear_screen() -> None:
         _ = system('clear')
 
 
-def print_emails(emails: list, email: str) -> None:
-    """Takes a list of emails and prints each email to the screen"""
-    user, domain = parse_email(email)
-    for mail in emails:
-        id = mail['id']
+def contains_code(text: str) -> bool:
+    pattern = r"\d{4,}"
+    match = re.search(pattern, text)
+    if match:
+        return True
+    else:
+        return False
+
+
+def print_code(text: str) -> None:
+    pattern = r"\d{4,}"
+    match = re.search(pattern, text)
+    pyperclip.copy(match.group())
+    print(f"Code found: {match.group()}\n(copied to clipboard)")
+
+
+def print_email(email: str, email_list: list) -> None:
+    """Take a list of emails and print to the screen argument index"""
+    try:
+        user, domain = split_email(email)
+        id = email_list[0]['id']
 
         r = requests.get(
             f'https://www.1secmail.com/api/v1/?action=readMessage&login={user}&domain={domain}&id={id}')
         content = r.json()
         print(f"\nDate: {content['date']}\nFrom: {content['from']}\n\tSubject: {
-              content['subject']}\n\tBody: {content['textBody']}")
+            content['subject']}\n\tBody: {content['textBody']}")
 
-
-def print_email(email: str, email_list: list, index: int) -> None:
-    """Take a list of emails and print to the screen argument index"""
-    user, domain = parse_email(email)
-    email_to_print = email_list[index]
-    id = email_to_print['id']
-
-    r = requests.get(
-        f'https://www.1secmail.com/api/v1/?action=readMessage&login={user}&domain={domain}&id={id}')
-    content = r.json()
-    print(f"\nDate: {content['date']}\nFrom: {content['from']}\n\tSubject: {
-        content['subject']}\n\tBody: {content['textBody']}")
+        if contains_code(content['textBody']):
+            print_code(content['textBody'])
+    except Exception as e:
+        logging.error("Failed to print email: %s", e)
 
 
 def open_1secmail(email: str) -> None:
-    user, domain = parse_email(email)
+    user, domain = split_email(email)
     url = f"https://www.1secmail.com/?login={user}&domain={domain}"
     webbrowser.open_new(url)
 
@@ -92,13 +110,13 @@ ___________________________________
     """)
 
     count = 0
-    start_time = time.time()
 
     try:
-        while time.time() - start_time < 30:
-            if len(list_of_emails(email)) > count:
-                count += 1
-                print_email(email, list_of_emails(email), count - 1)
+        while True:
+            email_list = list_of_emails(email)
+            if len(email_list) > count:
+                print_email(email, email_list)
+                count = len(email_list)
             time.sleep(5)  # Sleep to prevent accessive API calls
     except KeyboardInterrupt:
         print(f"Program terminated")
@@ -118,16 +136,17 @@ def print_title() -> None:
 def main():
     print_title()
 
-    # count = 0
-
     # Generate the email
     email = generate_email()
 
-    # Copy the email to clipboard
-    pyperclip.copy(email)
-    print(f"{email} - copied to clipboard\n")
+    if email:
+        # Copy the email to clipboard
+        pyperclip.copy(email)
+        print(f"{email} - copied to clipboard\n")
 
-    monitor_email(email)
+        monitor_email(email)
+    else:
+        print("Failed to generate email. Exiting")
 
 
 if __name__ == "__main__":
